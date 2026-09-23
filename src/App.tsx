@@ -57,7 +57,7 @@ export default function App() {
 
       {name === "intro" && (
         <div className="sticky bottom-0 flex gap-2.5 bg-background py-3 [padding-bottom:calc(0.75rem+env(safe-area-inset-bottom))]">
-          <Button size="lg" onClick={() => go(1)}>내 공사로 점검 시작</Button>
+          <Button size="lg" className="cta-anim" onClick={() => go(1)}>내 공사로 점검 시작</Button>
         </div>
       )}
 
