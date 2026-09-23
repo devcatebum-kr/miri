@@ -136,17 +136,17 @@ export function Intro() {
 
       <p className="mt-6 mb-2.5 text-[15px] font-extrabold text-ink">예정 중인 시공, 하나만 눌러보세요</p>
       <div className="flex flex-wrap gap-2">
-        {keys.map((k) => (
-          <button key={k} type="button" onClick={() => setPick(k)}
-            className={cn("flex cursor-pointer items-center gap-1.5 rounded-2xl border-[1.5px] px-3.5 py-2.5 text-[14.5px] font-bold transition-all active:scale-[0.97]",
+        {keys.map((k, i) => (
+          <button key={k} type="button" onClick={() => setPick(k)} style={{ animationDelay: `${i * 55}ms` }}
+            className={cn("chip-in flex cursor-pointer items-center gap-1.5 rounded-2xl border-[1.5px] px-3.5 py-2.5 text-[14.5px] font-bold transition-all active:scale-[0.97]",
               pick === k
-                ? "border-primary bg-accent text-[color:var(--primary)] shadow-[0_2px_12px_rgba(0,100,255,0.14)]"
+                ? "border-primary bg-accent text-[color:var(--primary)] shadow-[0_3px_14px_rgba(0,100,255,0.18)] scale-[1.03]"
                 : "border-border bg-card text-secondary-foreground shadow-[0_1px_3px_rgba(28,27,24,0.05)] hover:border-[color:var(--primary)]/45")}>
             <span className="text-[16px] leading-none">{EXIC[k]}</span>{k}
           </button>
         ))}
       </div>
-      <div className="mt-3.5 rounded-2xl border bg-card p-5 shadow-[0_1px_3px_rgba(28,27,24,0.05)]">
+      <div key={pick} className="card-swap mt-3.5 rounded-2xl border bg-card p-5 shadow-[0_1px_3px_rgba(28,27,24,0.05)]">
         <div className="mb-2.5 flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-muted text-[15px]">{EXIC[pick]}</span>
           <p className="text-[12.5px] font-bold text-sub">{pick}, 이런 걸 놓치기 쉬워요</p>

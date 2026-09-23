@@ -1,17 +1,23 @@
 import type { Cat, Sev, Conf, Finding, State } from "./types"
 
 export function evaluate(S: State): Finding[] {
-  const sp = S.spaces, W = S.works, split = S.order === "반셀프", km = S.kitchenMove
+  const sp = S.spaces, W = S.works, split = S.order === "반셀프"
+  // 선택한 공간의 하위질문을 안 골랐으면(빈값) '모름'으로 취급 — 결과에서 조용히 누락되지 않게
+  const bathDeot = sp.bath && !S.bathDeot ? "모름" : S.bathDeot
+  const km = sp.kitchen && !S.kitchenMove ? "모름" : S.kitchenMove
+  const age = S.age || "모름"
   const F: Finding[] = []
   const A = (cat: Cat, sev: Sev, conf: Conf, stage: string, t: string) => F.push({ cat, sev, conf, stage, t })
   const floors = Object.keys(S.floorType).filter((k) => S.floorType[k] && k !== "모름")
 
   // 철거
-  if ((S.age === "구축" || S.prevReno === "있음") && W.demo)
+  if ((age === "구축" || S.prevReno === "있음") && W.demo)
     A("miss", "must", "sure", "demo", "구축이나 이전 인테리어 이력이 있으면 철거 후 <b>추가금</b>이 거의 확실해요. 예비비를 예산의 10~15%쯤 잡으세요.")
-  if (sp.bath && S.bathDeot === "있음")
+  if (age === "모름" && W.demo)
+    A("time", "normal", "check", "demo", "집 <b>연식이 '모름'</b>이에요. 구축(20년 이상)이면 철거 후 추가금·노후 배관 리스크가 커지니 준공연도를 확인하세요.")
+  if (sp.bath && bathDeot === "있음")
     A("order", "must", "sure", "demo", "욕실 <b>덧방 이력 있음</b>. 그 위 재덧방은 같이 떨어질 위험이 커요. 완전철거 기준으로 예산·순서를 잡으세요.")
-  if (sp.bath && S.bathDeot === "모름")
+  if (sp.bath && bathDeot === "모름")
     A("order", "normal", "check", "demo", "<b>욕실 덧방 이력을 확인하세요.</b> 두드려 텅텅 소리, 문틀·타일 단차가 유난히 없으면 이미 덧방됐을 수 있어요. 덧방이면 완전철거로 갈 확률이 높아요.")
   // 설비·미장
   if (W.plumb || km === "볼수전")
@@ -76,7 +82,7 @@ export function evaluate(S: State): Finding[] {
   // 일정
   if (split)
     A("time", "normal", "sure", "final", "업체가 공정별로 다르면 한 곳만 밀려도 뒤가 다 밀려요. 공정 사이에 <b>버퍼</b>를 두고, 앞 공정 완료를 확인하고 다음을 부르세요.")
-  if (S.age === "구축" || S.prevReno === "있음")
+  if (age === "구축" || S.prevReno === "있음")
     A("time", "normal", "sure", "final", "뜯고 나서 추가 공정이 생기면 일정도 같이 밀려요. 며칠 여유를 두세요.")
   // 책임
   if (split) {
