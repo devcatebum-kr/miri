@@ -1,22 +1,38 @@
-import { useEffect } from "react"
-import type { State } from "./types"
-import { STAGES } from "./data"
+import { useEffect, useState } from "react"
+import type { State, Finding } from "./types"
+import { STAGES, STAGE_TO_WORK } from "./data"
 import { evaluate, activeStages } from "./engine"
 import { Summary } from "./WizardSteps"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
-import { trackSubmission } from "@/lib/track"
+import { trackSubmission, trackEvent } from "@/lib/track"
+
+const fkey = (f: Finding) => `${f.stage}:${f.cat}:${f.t.slice(0, 24)}`
 
 export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; wiz: [string, string][] }) {
-  const F = evaluate(S)
-  const active = activeStages(S)
-  // 고르지 않은 공정에 걸린 경고 → 타임라인이 아니라 별도 칸으로
+  // '이미 있어요'로 추가된 공정 / '안 볼게요'로 접은 경고 — 결과 화면에서 제자리 처리(처음으로 안 돌아감)
+  const [addedWorks, setAddedWorks] = useState<Record<string, boolean>>({})
+  const [dismissed, setDismissed] = useState<Record<string, boolean>>({})
+  const eS: State = { ...S, works: { ...S.works, ...addedWorks } }
+
+  const F = evaluate(eS).filter((f) => !dismissed[fkey(f)])
+  const active = activeStages(eS)
   const stageName = (k: string) => STAGES.find((s) => s[0] === k)?.[2] || k
   const sureMust = F.filter((f) => f.conf === "sure" && f.sev === "must")
   const checks = F.filter((f) => f.conf === "check" && active[f.stage])
   const hero = sureMust.slice(0, 4)
   const orphans = F.filter((f) => !active[f.stage] && !hero.includes(f))
   const stages = STAGES.filter((s) => active[s[0]])
+
+  const haveIt = (f: Finding) => {
+    const w = STAGE_TO_WORK[f.stage]
+    if (w) setAddedWorks((p) => ({ ...p, [w]: true }))
+    trackEvent("already_have", f.stage)
+  }
+  const hide = (f: Finding) => {
+    setDismissed((p) => ({ ...p, [fkey(f)]: true }))
+    trackEvent("dismiss", f.stage)
+  }
 
   // 결과 도달 시 케이스 저장(세션·입력조합당 1회, 비차단)
   useEffect(() => {
@@ -28,6 +44,12 @@ export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; 
     <div>
       <p className="pt-1 pb-4 text-[13px] font-bold tracking-wide text-faint">미리보기 결과</p>
       <Summary S={S} goTo={goTo} wiz={wiz} />
+
+      {Object.keys(addedWorks).length > 0 && (
+        <div className="mb-4 rounded-[12px] bg-accent px-3.5 py-2.5 text-[12.5px] font-semibold leading-relaxed text-[color:var(--accent-foreground)]">
+          공정을 반영했어요. 입력이 정확해질수록 짚을 게 더 선명해져요 — 새 항목이 보이면 그건 방금 넣은 공정과 물리는 것들이에요.
+        </div>
+      )}
 
       {/* 진단 히어로 (C) */}
       <div className="mb-5 rounded-[calc(var(--radius)-2px)] border bg-card p-6 shadow-[0_2px_12px_rgba(28,27,24,0.05)]">
@@ -71,7 +93,19 @@ export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; 
             {hero.map((f, i) => (
               <div key={i} className={cn("grid grid-cols-[auto_1fr] gap-3 px-4 py-4", i > 0 && "border-t")}>
                 <span className="mt-px grid size-6 shrink-0 place-items-center rounded-full bg-muted text-[12px] font-black text-sub">{i + 1}</span>
-                <span className="text-[14.5px] leading-relaxed text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink" dangerouslySetInnerHTML={{ __html: f.t }} />
+                <div>
+                  <span className="text-[14.5px] leading-relaxed text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink" dangerouslySetInnerHTML={{ __html: f.t }} />
+                  {!active[f.stage] && (
+                    <div className="mt-2 flex gap-1.5">
+                      {STAGE_TO_WORK[f.stage] && (
+                        <button type="button" onClick={() => haveIt(f)}
+                          className="rounded-full border border-input bg-muted px-2.5 py-1 text-[11.5px] font-extrabold text-sub active:scale-95">이미 있어요</button>
+                      )}
+                      <button type="button" onClick={() => hide(f)}
+                        className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-faint active:scale-95">이건 안 볼게요</button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -88,12 +122,22 @@ export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; 
       {orphans.length > 0 && (
         <div className="mb-5 rounded-[14px] border border-dashed border-input bg-card p-4">
           <p className="text-[15px] font-black text-ink">고르지 않으셨지만, 빠졌을 수 있어요</p>
-          <p className="mb-3 mt-1 text-[12.5px] font-medium text-sub">고르신 공간·상태를 보면 보통 같이 들어가는 공정이에요. 계획에 없으면 업체와 확인하세요.</p>
-          <ul className="flex flex-col gap-3">
-            {orphans.map((f, i) => (
-              <li key={i} className="grid grid-cols-[auto_1fr] items-start gap-2.5 text-[13.5px] leading-snug text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink">
+          <p className="mb-3.5 mt-1 text-[12.5px] font-medium text-sub">고르신 공간·상태를 보면 보통 같이 들어가는 공정이에요. 이미 계획에 있으면 '이미 있어요'를 눌러주세요.</p>
+          <ul className="flex flex-col gap-4">
+            {orphans.map((f) => (
+              <li key={fkey(f)} className="grid grid-cols-[auto_1fr] items-start gap-2.5 text-[13.5px] leading-snug text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink">
                 <span className="mt-px shrink-0 rounded-[6px] bg-muted px-1.5 py-0.5 text-[11px] font-extrabold text-sub">{stageName(f.stage)}</span>
-                <span dangerouslySetInnerHTML={{ __html: f.t }} />
+                <div>
+                  <span dangerouslySetInnerHTML={{ __html: f.t }} />
+                  <div className="mt-2 flex gap-1.5">
+                    {STAGE_TO_WORK[f.stage] && (
+                      <button type="button" onClick={() => haveIt(f)}
+                        className="rounded-full border border-input bg-muted px-2.5 py-1 text-[11.5px] font-extrabold text-sub active:scale-95">이미 있어요</button>
+                    )}
+                    <button type="button" onClick={() => hide(f)}
+                      className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-faint active:scale-95">이건 안 볼게요</button>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>

@@ -1,5 +1,5 @@
 import type { State } from "./types"
-import { SPACES, WORKS, TILEW, FLOOROPT, SPACE_WORKS } from "./data"
+import { SPACES, WORKS, TILEW, FLOOROPT, SPACE_WORKS, WORK_ORDER, WORK_EMOJI } from "./data"
 import { Chips, Options, Insight, H1, Sub } from "./controls"
 
 type Toggle = (group: keyof State, key: string) => void
@@ -26,6 +26,33 @@ function insightFor(name: string, S: State): { tone: string; html: string } | nu
 
 const WLABEL: Record<string, string> = Object.fromEntries(WORKS.map(([k, l]) => [k, l]))
 
+// 상단 고정 '내 공사 순서' 레일 — 고른 공정을 공사 순서대로 쌓아 보여줌(잠금 없음)
+function OrderRail({ S }: { S: State }) {
+  const ordered = WORK_ORDER.filter((k) => S.works[k])
+  return (
+    <div className="sticky top-[64px] z-[9] -mx-[18px] mb-5 border-b bg-background/95 px-[18px] py-2.5 backdrop-blur">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="text-[11px] font-extrabold tracking-wide text-sub">내 공사 순서</span>
+        {ordered.length > 0 && <span className="text-[11px] font-bold text-faint">{ordered.length}개 · 왼쪽부터 진행</span>}
+      </div>
+      {ordered.length === 0 ? (
+        <p className="py-1 text-[12.5px] font-medium text-faint">아래에서 공정을 고르면 여기에 <b className="font-bold text-sub">공사 순서대로</b> 쌓여요.</p>
+      ) : (
+        <div className="flex items-center gap-0 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {ordered.map((k, i) => (
+            <div key={k} className="flex shrink-0 items-center">
+              {i > 0 && <span className="mx-0.5 h-px w-3 bg-input" />}
+              <span className="animate-in fade-in zoom-in-95 duration-200 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-accent px-2.5 py-1 text-[12.5px] font-bold text-[color:var(--accent-foreground)]">
+                <span className="text-[13px] leading-none">{WORK_EMOJI[k]}</span>{WLABEL[k]}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // 공간 + 공정 한 화면. 공간을 고르면 그 공간에서 주로 하는 공정을 묶어서 보여줌(미리 체크는 안 함)
 export function Scope({ S, toggle }: { S: State; toggle: Toggle }) {
   const picked = SPACES.filter(([k]) => S.spaces[k])
@@ -41,6 +68,7 @@ export function Scope({ S, toggle }: { S: State; toggle: Toggle }) {
     <div className="mb-7">{blockLabel("공간")}
       <Chips pool={SPACES} selected={S.spaces} onToggle={(k) => toggle("spaces", k)} /></div>
     {picked.length > 0 && <>
+      <OrderRail S={S} />
       {blockLabel("계획·견적에 들어 있는 공정을 골라주세요")}
       <div className="flex flex-col gap-5">
         {groups.map((g) => (

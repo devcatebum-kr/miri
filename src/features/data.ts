@@ -13,6 +13,21 @@ export const WORKS: [string, string][] = [
   ["paint", "도장"], ["mold", "몰딩·문"],
 ]
 
+// 공사 순서(마일스톤)로 정렬할 때 쓰는 공정 순위 + 짧은 이모지 라벨
+export const WORK_ORDER: string[] = [
+  "demo", "plumb", "win", "insul", "elec", "carpent", "water", "tile", "paint", "film", "paper", "floor", "mold", "light",
+]
+export const WORK_EMOJI: Record<string, string> = {
+  demo: "🔨", plumb: "🚰", win: "🪟", insul: "🧊", elec: "🔌", carpent: "🪚",
+  water: "💧", tile: "🧱", paint: "🎨", film: "🎞", paper: "🧻", floor: "🪵", mold: "🚪", light: "💡",
+}
+// 결과의 '빠진 공정' 카드에서 '이미 있어요'를 눌렀을 때 켤 공정 (단계 stage → 공정 work)
+export const STAGE_TO_WORK: Record<string, string> = {
+  demo: "demo", plumb: "plumb", win: "win", elec: "elec", carpent: "carpent",
+  water: "water", tile: "tile", paper: "paper", floor: "floor", light: "light",
+  film: "film", paint: "paint", expand: "insul",
+}
+
 // 공간별로 주로 들어가는 공정 (미리 체크는 안 함 — 묶어서 보여주기만)
 export const SPACE_WORKS: Record<string, string[]> = {
   bath: ["demo", "plumb", "water", "tile"],
