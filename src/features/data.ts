@@ -9,29 +9,29 @@ export const SPACES: [string, string, string][] = [
 export const WORKS: [string, string][] = [
   ["demo", "철거"], ["plumb", "설비"], ["win", "창호"], ["elec", "전기"],
   ["carpent", "목공"], ["insul", "단열"], ["water", "방수"], ["tile", "타일"],
-  ["paper", "도배"], ["floor", "바닥"], ["light", "조명"], ["film", "필름"],
-  ["paint", "도장"], ["mold", "몰딩·문"],
+  ["cabinet", "상하부장"], ["paper", "도배"], ["floor", "바닥"], ["light", "조명"],
+  ["film", "필름"], ["paint", "도장"], ["mold", "몰딩·문"],
 ]
 
 // 공사 순서(마일스톤)로 정렬할 때 쓰는 공정 순위 + 짧은 이모지 라벨
 export const WORK_ORDER: string[] = [
-  "demo", "plumb", "win", "insul", "elec", "carpent", "water", "tile", "paint", "film", "paper", "floor", "mold", "light",
+  "demo", "plumb", "win", "insul", "elec", "carpent", "water", "tile", "paint", "film", "paper", "floor", "cabinet", "mold", "light",
 ]
 export const WORK_EMOJI: Record<string, string> = {
   demo: "🔨", plumb: "🚰", win: "🪟", insul: "🧊", elec: "🔌", carpent: "🪚",
-  water: "💧", tile: "🧱", paint: "🎨", film: "🎞", paper: "🧻", floor: "🪵", mold: "🚪", light: "💡",
+  water: "💧", tile: "🧱", paint: "🎨", film: "🎞", paper: "🧻", floor: "🪵", cabinet: "🗄", mold: "🚪", light: "💡",
 }
 // 결과의 '빠진 공정' 카드에서 '이미 있어요'를 눌렀을 때 켤 공정 (단계 stage → 공정 work)
 export const STAGE_TO_WORK: Record<string, string> = {
   demo: "demo", plumb: "plumb", win: "win", elec: "elec", carpent: "carpent",
   water: "water", tile: "tile", paper: "paper", floor: "floor", light: "light",
-  film: "film", paint: "paint", expand: "insul",
+  film: "film", paint: "paint", expand: "insul", kitchenfit: "cabinet",
 }
 
 // 공간별로 주로 들어가는 공정 (미리 체크는 안 함 — 묶어서 보여주기만)
 export const SPACE_WORKS: Record<string, string[]> = {
   bath: ["demo", "plumb", "water", "tile"],
-  kitchen: ["demo", "plumb", "elec", "tile"],
+  kitchen: ["demo", "plumb", "elec", "tile", "cabinet"],
   living: ["paper", "floor", "mold", "carpent", "light", "elec", "film", "paint"],
   entry: ["tile", "mold", "film"],
   veranda: ["tile", "water", "paint", "win"],

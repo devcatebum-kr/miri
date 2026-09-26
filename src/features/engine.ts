@@ -91,6 +91,15 @@ export function evaluate(S: State): Finding[] {
     A("miss", "normal", "sure", "floor", "바닥을 새로 하는데 <b>걸레받이·몰딩</b>이 안 보여요. 벽·바닥 마무리를 누가 하는지 확인하세요.")
   if (W.floor && floors.length > 1)
     A("resp", "normal", "sure", "floor", "<b>바닥재가 여러 개면 만나는 곳(문턱·경계)</b>의 높이차·마감 책임을 정해두세요. 안 정하면 단차·틈이 생겨요.")
+  // 주방 상하부장(주방가구)
+  if (sp.kitchen && !W.cabinet)
+    A("miss", "normal", "check", "kitchenfit", "주방을 하는데 <b>상하부장(주방가구)</b>이 안 보여요. 교체할 거면 실측·납기(2~3주)를 미리 잡고, 그대로 둘 거면 철거·타일 때 안 다치게 보양하세요.")
+  if (W.cabinet) {
+    A("resp", "normal", "check", "kitchenfit", "<b>상부장은 기존 벽 상태·몰딩에 걸려요.</b> 벽이 울거나 기존 몰딩이 남아 있으면 설치 위치·높이가 제한되거나 아예 못 달기도 해요. 철거·목공 때 벽면부터 확인하세요.")
+    A("order", "normal", "sure", "kitchenfit", "<b>상하부장은 벽·타일·전기가 끝난 뒤 실측</b>해서 짜요. 납기가 2~3주라 실측 즉시 주문해야 일정이 안 밀려요.")
+    if (W.tile && S.tileWhere.kit)
+      A("order", "normal", "sure", "kitchenfit", "<b>주방 벽타일과 상부장</b>은 서로 물려요. 상부장이 끝나는 높이·콘센트·후드 위치를 타일 붙이기 전에 정하세요.")
+  }
   // 누수 책임: 명목 책임 ≠ 실제 원인
   if (sp.bath && split && (W.water || W.tile))
     A("resp", "must", "sure", "dogi", "<b>욕실 누수는 방수보다 변기·세면대 설치나 덧방 때 충격에서 더 많이 나요.</b> 업체가 나뉘면 서로 방수 탓을 해요. 도기 설치 업체에도 누수 책임 범위를 적어두세요.")
@@ -105,7 +114,7 @@ export function evaluate(S: State): Finding[] {
       A("resp", "normal", "sure", "tile", "<b>타일과 도배 경계</b>(모서리 마감)는 서로 내 일이 아니라 하기 쉬워요. 마감 책임자를 미리 정하세요.")
     if (W.floor && (W.paper || W.tile))
       A("resp", "normal", "sure", "floor", "<b>벽과 바닥 이음새</b>(걸레받이·코킹)를 누가 마무리할지 정해두세요.")
-    if (sp.kitchen && W.tile)
+    if (sp.kitchen && W.cabinet && W.tile)
       A("resp", "normal", "sure", "kitchenfit", "<b>주방</b>은 가구·타일·전기가 서로 물려요. 순서와 실측 책임을 한 사람에게 묶어두세요.")
   } else if (S.order === "턴키") {
     A("resp", "normal", "sure", "final", "한 업체에 맡기면 책임은 단순해요. 대신 <b>무엇까지 포함인지</b>를 계약서에 구체적으로 쓰세요. 빠진 공정은 나중에 추가금으로 돌아와요.")
@@ -120,7 +129,7 @@ export function activeStages(S: State): Record<string, boolean> {
   ;["demo", "plumb", "win", "elec", "carpent", "water", "tile", "paper", "floor", "light", "film", "paint"].forEach((k) => { if (W[k]) a[k] = true })
   if (sp.expand || W.insul) a.expand = true
   if (sp.bath) a.dogi = true
-  if (sp.kitchen) a.kitchenfit = true
+  if (sp.kitchen && W.cabinet) a.kitchenfit = true
   a.final = true
   return a
 }
