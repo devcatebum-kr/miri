@@ -56,14 +56,17 @@ function OrderRail({ S }: { S: State }) {
 // 공간 + 공정 한 화면. 공간을 고르면 그 공간에서 주로 하는 공정을 묶어서 보여줌(미리 체크는 안 함)
 export function Scope({ S, toggle }: { S: State; toggle: Toggle }) {
   const picked = SPACES.filter(([k]) => S.spaces[k])
-  const shown = new Set<string>()
-  const groups = picked.map(([k, label, emoji]) => {
-    const keys = (SPACE_WORKS[k] || []).filter((w) => !shown.has(w))
-    keys.forEach((w) => shown.add(w))
-    return { k, label, emoji, keys }
-  }).filter((g) => g.keys.length)
-  const rest = WORKS.map(([k]) => k).filter((k) => !shown.has(k))
+  const byOrder = (keys: string[]) => [...keys].sort((a, b) => WORK_ORDER.indexOf(a) - WORK_ORDER.indexOf(b))
+  // 각 공정이 '선택한 공간' 중 몇 곳에 걸리는지 — 2곳 이상이면 공통, 1곳이면 그 공간 전용
+  const count: Record<string, number> = {}
+  picked.forEach(([k]) => (SPACE_WORKS[k] || []).forEach((w) => { count[w] = (count[w] || 0) + 1 }))
+  const commonKeys = byOrder(Object.keys(count).filter((w) => count[w] >= 2))
+  const groups = picked.map(([k, label, emoji]) => ({
+    k, label, emoji, keys: byOrder((SPACE_WORKS[k] || []).filter((w) => count[w] === 1)),
+  })).filter((g) => g.keys.length)
+  const rest = WORKS.map(([k]) => k).filter((k) => !(k in count))
   const pool = (keys: string[]) => keys.map((k) => [k, WLABEL[k]] as [string, string, string?])
+  const multi = picked.length > 1
   return (<div><H1>어디를, 뭘 하시나요?</H1><Sub>공간을 고르면 그 공간에서 주로 하는 공정이 아래에 나와요.</Sub>
     <div className="mb-7">{blockLabel("공간")}
       <Chips pool={SPACES} selected={S.spaces} onToggle={(k) => toggle("spaces", k)} /></div>
@@ -71,9 +74,15 @@ export function Scope({ S, toggle }: { S: State; toggle: Toggle }) {
       <OrderRail S={S} />
       {blockLabel("계획·견적에 들어 있는 공정을 골라주세요")}
       <div className="flex flex-col gap-5">
+        {commonKeys.length > 0 && (
+          <div>
+            <p className="mb-2 text-[13px] font-bold text-sub">🧩 여러 공간에 공통</p>
+            <Chips pool={pool(commonKeys)} selected={S.works} onToggle={(k) => toggle("works", k)} />
+          </div>
+        )}
         {groups.map((g) => (
           <div key={g.k}>
-            <p className="mb-2 text-[13px] font-bold text-sub">{g.emoji} {g.label}에서 주로 하는 것</p>
+            <p className="mb-2 text-[13px] font-bold text-sub">{g.emoji} {multi ? `${g.label}만` : g.label}에서 주로 하는 것</p>
             <Chips pool={pool(g.keys)} selected={S.works} onToggle={(k) => toggle("works", k)} />
           </div>
         ))}
@@ -82,7 +91,7 @@ export function Scope({ S, toggle }: { S: State; toggle: Toggle }) {
           <Chips pool={pool(rest)} selected={S.works} onToggle={(k) => toggle("works", k)} />
         </div>}
       </div>
-      {tip("같은 공정은 한 번만 나와요. 예를 들어 철거를 욕실에서 골랐다면 주방 철거도 포함된 걸로 봐요.")}
+      {tip(multi ? "여러 공간에 공통으로 들어가는 공정은 <b>공통</b>에 한 번만 모았어요. 철거·타일 같은 건 공간마다 또 고를 필요 없어요." : "계획이나 견적에 있는 것만 고르면 돼요.")}
       {S.works.tile && <div className="mt-6">{blockLabel("타일은 어디에 하시나요?")}
         <Chips pool={TILEW as [string, string, string?][]} selected={S.tileWhere} onToggle={(k) => toggle("tileWhere", k)} /></div>}
     </>}

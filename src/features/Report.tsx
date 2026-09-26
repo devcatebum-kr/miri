@@ -24,6 +24,8 @@ export function Report({ S, goTo, wiz, preview = false }: { S: State; goTo: (n: 
   const orphans = F.filter((f) => !active[f.stage] && !hero.includes(f))
   const stages = STAGES.filter((s) => active[s[0]])
 
+  const [confirming, setConfirming] = useState<Record<string, boolean>>({})
+  const isBig = (f: Finding) => f.sev === "must" && f.conf === "sure"
   const haveIt = (f: Finding) => {
     const w = STAGE_TO_WORK[f.stage]
     if (w) setAddedWorks((p) => ({ ...p, [w]: true }))
@@ -32,6 +34,36 @@ export function Report({ S, goTo, wiz, preview = false }: { S: State; goTo: (n: 
   const hide = (f: Finding) => {
     setDismissed((p) => ({ ...p, [fkey(f)]: true }))
     trackEvent("dismiss", f.stage)
+  }
+  // 큰 리스크(must)는 한 번 더 확인하고 접음
+  const askHide = (f: Finding) => {
+    if (isBig(f) && !confirming[fkey(f)]) setConfirming((p) => ({ ...p, [fkey(f)]: true }))
+    else hide(f)
+  }
+  const cancelHide = (f: Finding) => setConfirming((p) => { const n = { ...p }; delete n[fkey(f)]; return n })
+
+  // 인라인 액션(이미 있어요 / 안 볼게요 + must 확인) — 히어로·빠짐칸 공용
+  const Actions = ({ f }: { f: Finding }) => {
+    if (preview || active[f.stage]) return null
+    if (confirming[fkey(f)]) return (
+      <div className="mt-2 flex items-center gap-1.5">
+        <span className="text-[11.5px] font-bold text-miss">큰 리스크예요. 정말 접을까요?</span>
+        <button type="button" onClick={() => hide(f)}
+          className="rounded-full border border-[#F3CACB] bg-[var(--miss-bg)] px-2.5 py-1 text-[11.5px] font-extrabold text-miss active:scale-95">네, 접기</button>
+        <button type="button" onClick={() => cancelHide(f)}
+          className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-sub active:scale-95">취소</button>
+      </div>
+    )
+    return (
+      <div className="mt-2 flex gap-1.5">
+        {STAGE_TO_WORK[f.stage] && (
+          <button type="button" onClick={() => haveIt(f)}
+            className="rounded-full border border-input bg-muted px-2.5 py-1 text-[11.5px] font-extrabold text-sub active:scale-95">이미 있어요</button>
+        )}
+        <button type="button" onClick={() => askHide(f)}
+          className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-faint active:scale-95">이건 안 볼게요</button>
+      </div>
+    )
   }
 
   // 결과 도달 시 케이스 저장(세션·입력조합당 1회, 비차단). 예시(preview)는 저장 안 함.
@@ -96,16 +128,7 @@ export function Report({ S, goTo, wiz, preview = false }: { S: State; goTo: (n: 
                 <span className="mt-px grid size-6 shrink-0 place-items-center rounded-full bg-muted text-[12px] font-black text-sub">{i + 1}</span>
                 <div>
                   <span className="text-[14.5px] leading-relaxed text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink" dangerouslySetInnerHTML={{ __html: f.t }} />
-                  {!preview && !active[f.stage] && (
-                    <div className="mt-2 flex gap-1.5">
-                      {STAGE_TO_WORK[f.stage] && (
-                        <button type="button" onClick={() => haveIt(f)}
-                          className="rounded-full border border-input bg-muted px-2.5 py-1 text-[11.5px] font-extrabold text-sub active:scale-95">이미 있어요</button>
-                      )}
-                      <button type="button" onClick={() => hide(f)}
-                        className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-faint active:scale-95">이건 안 볼게요</button>
-                    </div>
-                  )}
+                  <Actions f={f} />
                 </div>
               </div>
             ))}
@@ -130,16 +153,7 @@ export function Report({ S, goTo, wiz, preview = false }: { S: State; goTo: (n: 
                 <span className="mt-px shrink-0 rounded-[6px] bg-muted px-1.5 py-0.5 text-[11px] font-extrabold text-sub">{stageName(f.stage)}</span>
                 <div>
                   <span dangerouslySetInnerHTML={{ __html: f.t }} />
-                  {!preview && (
-                    <div className="mt-2 flex gap-1.5">
-                      {STAGE_TO_WORK[f.stage] && (
-                        <button type="button" onClick={() => haveIt(f)}
-                          className="rounded-full border border-input bg-muted px-2.5 py-1 text-[11.5px] font-extrabold text-sub active:scale-95">이미 있어요</button>
-                      )}
-                      <button type="button" onClick={() => hide(f)}
-                        className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-faint active:scale-95">이건 안 볼게요</button>
-                    </div>
-                  )}
+                  <Actions f={f} />
                 </div>
               </li>
             ))}
