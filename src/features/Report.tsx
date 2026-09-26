@@ -9,7 +9,7 @@ import { trackSubmission, trackEvent } from "@/lib/track"
 
 const fkey = (f: Finding) => `${f.stage}:${f.cat}:${f.t.slice(0, 24)}`
 
-export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; wiz: [string, string][] }) {
+export function Report({ S, goTo, wiz, preview = false }: { S: State; goTo: (n: string) => void; wiz: [string, string][]; preview?: boolean }) {
   // '이미 있어요'로 추가된 공정 / '안 볼게요'로 접은 경고 — 결과 화면에서 제자리 처리(처음으로 안 돌아감)
   const [addedWorks, setAddedWorks] = useState<Record<string, boolean>>({})
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({})
@@ -34,16 +34,17 @@ export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; 
     trackEvent("dismiss", f.stage)
   }
 
-  // 결과 도달 시 케이스 저장(세션·입력조합당 1회, 비차단)
+  // 결과 도달 시 케이스 저장(세션·입력조합당 1회, 비차단). 예시(preview)는 저장 안 함.
   useEffect(() => {
+    if (preview) return
     trackSubmission(S, { must: sureMust.length, check: checks.length, orphan: orphans.length })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <div>
-      <p className="pt-1 pb-4 text-[13px] font-bold tracking-wide text-faint">미리보기 결과</p>
-      <Summary S={S} goTo={goTo} wiz={wiz} />
+      {!preview && <p className="pt-1 pb-4 text-[13px] font-bold tracking-wide text-faint">미리보기 결과</p>}
+      {!preview && <Summary S={S} goTo={goTo} wiz={wiz} />}
 
       {Object.keys(addedWorks).length > 0 && (
         <div className="mb-4 rounded-[12px] bg-accent px-3.5 py-2.5 text-[12.5px] font-semibold leading-relaxed text-[color:var(--accent-foreground)]">
@@ -95,7 +96,7 @@ export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; 
                 <span className="mt-px grid size-6 shrink-0 place-items-center rounded-full bg-muted text-[12px] font-black text-sub">{i + 1}</span>
                 <div>
                   <span className="text-[14.5px] leading-relaxed text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink" dangerouslySetInnerHTML={{ __html: f.t }} />
-                  {!active[f.stage] && (
+                  {!preview && !active[f.stage] && (
                     <div className="mt-2 flex gap-1.5">
                       {STAGE_TO_WORK[f.stage] && (
                         <button type="button" onClick={() => haveIt(f)}
@@ -122,21 +123,23 @@ export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; 
       {orphans.length > 0 && (
         <div className="mb-5 rounded-[14px] border border-dashed border-input bg-card p-4">
           <p className="text-[15px] font-black text-ink">고르지 않으셨지만, 빠졌을 수 있어요</p>
-          <p className="mb-3.5 mt-1 text-[12.5px] font-medium text-sub">고르신 공간·상태를 보면 보통 같이 들어가는 공정이에요. 이미 계획에 있으면 '이미 있어요'를 눌러주세요.</p>
+          <p className="mb-3.5 mt-1 text-[12.5px] font-medium text-sub">고르신 공간·상태를 보면 보통 같이 들어가는 공정이에요.{preview ? " 계획에 없으면 업체와 확인하세요." : " 이미 계획에 있으면 '이미 있어요'를 눌러주세요."}</p>
           <ul className="flex flex-col gap-4">
             {orphans.map((f) => (
               <li key={fkey(f)} className="grid grid-cols-[auto_1fr] items-start gap-2.5 text-[13.5px] leading-snug text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink">
                 <span className="mt-px shrink-0 rounded-[6px] bg-muted px-1.5 py-0.5 text-[11px] font-extrabold text-sub">{stageName(f.stage)}</span>
                 <div>
                   <span dangerouslySetInnerHTML={{ __html: f.t }} />
-                  <div className="mt-2 flex gap-1.5">
-                    {STAGE_TO_WORK[f.stage] && (
-                      <button type="button" onClick={() => haveIt(f)}
-                        className="rounded-full border border-input bg-muted px-2.5 py-1 text-[11.5px] font-extrabold text-sub active:scale-95">이미 있어요</button>
-                    )}
-                    <button type="button" onClick={() => hide(f)}
-                      className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-faint active:scale-95">이건 안 볼게요</button>
-                  </div>
+                  {!preview && (
+                    <div className="mt-2 flex gap-1.5">
+                      {STAGE_TO_WORK[f.stage] && (
+                        <button type="button" onClick={() => haveIt(f)}
+                          className="rounded-full border border-input bg-muted px-2.5 py-1 text-[11.5px] font-extrabold text-sub active:scale-95">이미 있어요</button>
+                      )}
+                      <button type="button" onClick={() => hide(f)}
+                        className="rounded-full border border-input bg-card px-2.5 py-1 text-[11.5px] font-bold text-faint active:scale-95">이건 안 볼게요</button>
+                    </div>
+                  )}
                 </div>
               </li>
             ))}

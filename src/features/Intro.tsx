@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-import { EX, EXIC, CASES, type CaseEx } from "./data"
+import { EX, EXIC } from "./data"
+import type { State } from "./types"
+import { Report } from "./Report"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+
+const emptyS = (): State => ({ spaces: {}, bathDeot: "", kitchenMove: "", floorType: {}, age: "", prevReno: "", works: {}, tileWhere: {}, order: "" })
+// 예시는 진짜 엔진으로 생성 — 고정 샘플 입력을 실제 결과 화면(Report preview)에 그대로 흘림 (예시=실물 항상 일치)
+const SAMPLE_1: State = { ...emptyS(), spaces: { bath: true, kitchen: true }, bathDeot: "모름", kitchenMove: "볼수전", age: "구축", works: { demo: true, tile: true, cabinet: true }, tileWhere: { bath: true, kit: true }, order: "반셀프" }
+const SAMPLE_2: State = { ...emptyS(), spaces: { living: true, expand: true }, floorType: { 모름: true }, age: "구축", works: { demo: true, carpent: true, insul: true, paper: true, floor: true }, order: "턴키" }
 
 const reduceMotion = () =>
   typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -22,106 +29,6 @@ function Reveal({ children, className }: { children: React.ReactNode; className?
     return () => { io.disconnect(); clearTimeout(fallback) }
   }, [])
   return <div ref={ref} className={cn("reveal", className)}>{children}</div>
-}
-
-function useCountUp(target: number) {
-  const [n, setN] = useState(reduceMotion() ? target : 0)
-  useEffect(() => {
-    if (reduceMotion()) { setN(target); return }
-    let raf = 0
-    const t0 = performance.now()
-    const dur = 700
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - t0) / dur)
-      setN(Math.round(target * (1 - Math.pow(1 - p, 3))))
-      if (p < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [target])
-  return n
-}
-
-function CaseView({ c }: { c: CaseEx }) {
-  const must = useCountUp(c.must)
-  const check = useCountUp(c.check)
-  const total = c.must + c.check || 1
-  const [grown, setGrown] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setGrown(true), 80)
-    return () => clearTimeout(t)
-  }, [])
-  return (
-    <div>
-      {/* input */}
-      <div className="flex flex-wrap gap-1.5">
-        {c.pin.map((p, i) => {
-          const [label, miss] = Array.isArray(p) ? [p[0], true] : [p, false]
-          return (
-            <span key={i} className={cn(
-              "rounded-full border px-2.5 py-1 text-[11.5px] font-bold",
-              miss ? "text-miss border-[#F3CACB] bg-[var(--miss-bg)]" : "text-secondary-foreground border-border bg-card"
-            )}>{label}</span>
-          )
-        })}
-      </div>
-      {/* divider */}
-      <div className="my-3 flex items-center gap-2">
-        <span className="h-px flex-1 bg-input" />
-        <b className="text-[11px] font-semibold text-faint">그래서 이렇게 나와요</b>
-        <span className="h-px flex-1 bg-input" />
-      </div>
-      {/* summary */}
-      <div className="flex gap-2">
-        <div className="flex-1 rounded-[11px] border bg-card p-2.5 text-center">
-          <div className="text-[20px] font-black leading-none text-miss">{must}</div>
-          <div className="mt-1 text-[10.5px] font-bold text-sub">꼭 챙길 것</div>
-        </div>
-        <div className="flex-1 rounded-[11px] border bg-card p-2.5 text-center">
-          <div className="text-[20px] font-black leading-none text-check">{check}</div>
-          <div className="mt-1 text-[10.5px] font-bold text-sub">확인 필요</div>
-        </div>
-      </div>
-      <div className="mt-2 flex h-2 gap-1 overflow-hidden rounded-full bg-muted">
-        {c.must > 0 && <span className="bar-seg rounded-full bg-[var(--miss)]" style={{ width: grown ? `${(c.must / total) * 100}%` : "0%" }} />}
-        {c.check > 0 && <span className="bar-seg rounded-full bg-[var(--check)]" style={{ width: grown ? `${(c.check / total) * 100}%` : "0%" }} />}
-      </div>
-      {/* hero */}
-      <p className="mt-3.5 mb-2 px-0.5 text-[11px] font-extrabold text-sub">지금 꼭 챙길 것</p>
-      <div className="overflow-hidden rounded-[12px] border bg-card">
-        {[...c.hero, ...c.rest].map(([t], i) => (
-          <div key={i} className={cn("grid grid-cols-[auto_1fr] items-start gap-2.5 px-3 py-2.5", i > 0 && "border-t")}>
-            <span className="mt-px grid size-[18px] shrink-0 place-items-center rounded-full bg-muted text-[10px] font-black text-sub">{i + 1}</span>
-            <span className="text-[12.5px] leading-snug text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink" dangerouslySetInnerHTML={{ __html: t }} />
-          </div>
-        ))}
-      </div>
-      {/* check */}
-      <p className="mt-3.5 mb-2 px-0.5 text-[11px] font-extrabold text-check">확인 필요 · 착공 전 숙제</p>
-      <div className="overflow-hidden rounded-[11px] border border-[var(--check-line)] bg-[var(--check-bg)]">
-        {c.chk.map((t, i) => (
-          <div key={i} className={cn("grid grid-cols-[auto_1fr] items-start gap-2 px-3 py-2.5 text-[12.5px] leading-snug text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink", i > 0 && "border-t border-[var(--check-line)]")}>
-            <span className="mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-full border border-[var(--check-line)] bg-white text-[11px] font-black text-check">?</span>
-            <span dangerouslySetInnerHTML={{ __html: t }} />
-          </div>
-        ))}
-      </div>
-      {/* timeline strip */}
-      <p className="mt-3.5 mb-2 px-0.5 text-[11px] font-extrabold text-sub">공사 순서로 자세히</p>
-      <div className="flex items-center rounded-[11px] border bg-card px-2 py-2.5">
-        {c.tl.map((s, i) => (
-          <div key={i} className="flex items-center flex-1 justify-center">
-            {i > 0 && <span className="px-0.5 pb-3.5 text-[9px] text-input">›</span>}
-            <div className="flex flex-col items-center gap-1">
-              <div className={cn("grid size-[27px] place-items-center rounded-lg text-[13px]", s[2] ? "bg-[var(--miss-bg)] border border-[#F3CACB]" : "bg-muted")}>{s[0]}</div>
-              <div className="text-[9px] font-bold text-faint">{s[1]}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 px-0.5 text-center text-[10.5px] font-semibold text-faint">각 공정을 펼치면 공정별 체크포인트까지 나와요</p>
-    </div>
-  )
 }
 
 export function Intro() {
@@ -179,8 +86,8 @@ export function Intro() {
               <TabsTrigger value="0">① 욕실·주방 부분</TabsTrigger>
               <TabsTrigger value="1">② 발코니 확장 전체</TabsTrigger>
             </TabsList>
-            <TabsContent value="0" className="mt-3.5"><CaseView c={CASES[0]} /></TabsContent>
-            <TabsContent value="1" className="mt-3.5"><CaseView c={CASES[1]} /></TabsContent>
+            <TabsContent value="0" className="mt-3.5"><Report S={SAMPLE_1} goTo={() => {}} wiz={[]} preview /></TabsContent>
+            <TabsContent value="1" className="mt-3.5"><Report S={SAMPLE_2} goTo={() => {}} wiz={[]} preview /></TabsContent>
           </Tabs>
         </div>
       </Reveal>
