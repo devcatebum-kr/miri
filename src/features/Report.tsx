@@ -1,9 +1,11 @@
+import { useEffect } from "react"
 import type { State } from "./types"
 import { STAGES } from "./data"
 import { evaluate, activeStages } from "./engine"
 import { Summary } from "./WizardSteps"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
+import { trackSubmission } from "@/lib/track"
 
 export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; wiz: [string, string][] }) {
   const F = evaluate(S)
@@ -15,6 +17,12 @@ export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; 
   const hero = sureMust.slice(0, 4)
   const orphans = F.filter((f) => !active[f.stage] && !hero.includes(f))
   const stages = STAGES.filter((s) => active[s[0]])
+
+  // 결과 도달 시 케이스 저장(세션·입력조합당 1회, 비차단)
+  useEffect(() => {
+    trackSubmission(S, { must: sureMust.length, check: checks.length, orphan: orphans.length })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div>
