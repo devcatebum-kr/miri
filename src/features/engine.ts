@@ -89,7 +89,7 @@ export function evaluate(S: State): Finding[] {
   }
   if (W.floor && !W.mold)
     A("miss", "normal", "sure", "floor", "바닥을 새로 하는데 <b>걸레받이·몰딩</b>이 안 보여요. 벽·바닥 마무리를 누가 하는지 확인하세요.")
-  if (floors.length > 1)
+  if (W.floor && floors.length > 1)
     A("resp", "normal", "sure", "floor", "<b>바닥재가 여러 개면 만나는 곳(문턱·경계)</b>의 높이차·마감 책임을 정해두세요. 안 정하면 단차·틈이 생겨요.")
   // 누수 책임: 명목 책임 ≠ 실제 원인
   if (sp.bath && split && (W.water || W.tile))
@@ -113,14 +113,13 @@ export function evaluate(S: State): Finding[] {
   return F
 }
 
-export function activeStages(S: State, F: Finding[]): Record<string, boolean> {
+// 타임라인엔 '고른 것'만: 선택 공정 + 선택 공간에 딸린 단계(욕실 기구·주방 가구) + 마감
+export function activeStages(S: State): Record<string, boolean> {
   const a: Record<string, boolean> = {}
-  F.forEach((f) => (a[f.stage] = true))
   const W = S.works, sp = S.spaces
   ;["demo", "plumb", "win", "elec", "carpent", "water", "tile", "paper", "floor", "light", "film", "paint"].forEach((k) => { if (W[k]) a[k] = true })
-  if (W.plumb) a.plumb = true
   if (sp.expand || W.insul) a.expand = true
-  if (sp.bath && (W.tile || W.water)) a.dogi = true
+  if (sp.bath) a.dogi = true
   if (sp.kitchen) a.kitchenfit = true
   a.final = true
   return a

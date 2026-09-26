@@ -1,20 +1,25 @@
 import type { State } from "./types"
 import { STAGES } from "./data"
 import { evaluate, activeStages } from "./engine"
+import { Summary } from "./WizardSteps"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
 
-export function Report({ S }: { S: State }) {
+export function Report({ S, goTo, wiz }: { S: State; goTo: (n: string) => void; wiz: [string, string][] }) {
   const F = evaluate(S)
-  const active = activeStages(S, F)
+  const active = activeStages(S)
+  // 고르지 않은 공정에 걸린 경고 → 타임라인이 아니라 별도 칸으로
+  const stageName = (k: string) => STAGES.find((s) => s[0] === k)?.[2] || k
   const sureMust = F.filter((f) => f.conf === "sure" && f.sev === "must")
-  const checks = F.filter((f) => f.conf === "check")
+  const checks = F.filter((f) => f.conf === "check" && active[f.stage])
   const hero = sureMust.slice(0, 4)
+  const orphans = F.filter((f) => !active[f.stage] && !hero.includes(f))
   const stages = STAGES.filter((s) => active[s[0]])
 
   return (
     <div>
       <p className="pt-1 pb-4 text-[13px] font-bold tracking-wide text-faint">미리보기 결과</p>
+      <Summary S={S} goTo={goTo} wiz={wiz} />
 
       {/* 진단 히어로 (C) */}
       <div className="mb-5 rounded-[calc(var(--radius)-2px)] border bg-card p-6 shadow-[0_2px_12px_rgba(28,27,24,0.05)]">
@@ -69,6 +74,21 @@ export function Report({ S }: { S: State }) {
       ) : (
         <div className="mb-5 rounded-[calc(var(--radius)-6px)] border bg-card px-4 py-4 text-[14.5px] leading-relaxed text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink">
           지금 입력 기준으론 <b>꼭 짚어야 할 큰 문제</b>는 없어요. 아래 '확인 필요'와 공정별 체크포인트를 살펴보세요.
+        </div>
+      )}
+
+      {orphans.length > 0 && (
+        <div className="mb-5 rounded-[14px] border border-dashed border-input bg-card p-4">
+          <p className="text-[15px] font-black text-ink">고르지 않으셨지만, 빠졌을 수 있어요</p>
+          <p className="mb-3 mt-1 text-[12.5px] font-medium text-sub">고르신 공간·상태를 보면 보통 같이 들어가는 공정이에요. 계획에 없으면 업체와 확인하세요.</p>
+          <ul className="flex flex-col gap-3">
+            {orphans.map((f, i) => (
+              <li key={i} className="grid grid-cols-[auto_1fr] items-start gap-2.5 text-[13.5px] leading-snug text-secondary-foreground [&_b]:font-semibold [&_b]:text-ink">
+                <span className="mt-px shrink-0 rounded-[6px] bg-muted px-1.5 py-0.5 text-[11px] font-extrabold text-sub">{stageName(f.stage)}</span>
+                <span dangerouslySetInnerHTML={{ __html: f.t }} />
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

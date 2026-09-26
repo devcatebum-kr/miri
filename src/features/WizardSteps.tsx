@@ -1,5 +1,5 @@
 import type { State } from "./types"
-import { SPACES, WORKS, TILEW, FLOOROPT } from "./data"
+import { SPACES, WORKS, TILEW, FLOOROPT, SPACE_WORKS } from "./data"
 import { Chips, Options, Insight, H1, Sub } from "./controls"
 
 type Toggle = (group: keyof State, key: string) => void
@@ -24,9 +24,41 @@ function insightFor(name: string, S: State): { tone: string; html: string } | nu
   return null
 }
 
-export function Space({ S, toggle }: { S: State; toggle: Toggle }) {
-  return (<div><H1>어디를 손보시나요?</H1><Sub>하시려는 공간을 모두 골라주세요.</Sub>
-    <Chips pool={SPACES} selected={S.spaces} onToggle={(k) => toggle("spaces", k)} /></div>)
+const WLABEL: Record<string, string> = Object.fromEntries(WORKS.map(([k, l]) => [k, l]))
+
+// 공간 + 공정 한 화면. 공간을 고르면 그 공간에서 주로 하는 공정을 묶어서 보여줌(미리 체크는 안 함)
+export function Scope({ S, toggle }: { S: State; toggle: Toggle }) {
+  const picked = SPACES.filter(([k]) => S.spaces[k])
+  const shown = new Set<string>()
+  const groups = picked.map(([k, label, emoji]) => {
+    const keys = (SPACE_WORKS[k] || []).filter((w) => !shown.has(w))
+    keys.forEach((w) => shown.add(w))
+    return { k, label, emoji, keys }
+  }).filter((g) => g.keys.length)
+  const rest = WORKS.map(([k]) => k).filter((k) => !shown.has(k))
+  const pool = (keys: string[]) => keys.map((k) => [k, WLABEL[k]] as [string, string, string?])
+  return (<div><H1>어디를, 뭘 하시나요?</H1><Sub>공간을 고르면 그 공간에서 주로 하는 공정이 아래에 나와요.</Sub>
+    <div className="mb-7">{blockLabel("공간")}
+      <Chips pool={SPACES} selected={S.spaces} onToggle={(k) => toggle("spaces", k)} /></div>
+    {picked.length > 0 && <>
+      {blockLabel("계획·견적에 들어 있는 공정을 골라주세요")}
+      <div className="flex flex-col gap-5">
+        {groups.map((g) => (
+          <div key={g.k}>
+            <p className="mb-2 text-[13px] font-bold text-sub">{g.emoji} {g.label}에서 주로 하는 것</p>
+            <Chips pool={pool(g.keys)} selected={S.works} onToggle={(k) => toggle("works", k)} />
+          </div>
+        ))}
+        {rest.length > 0 && <div>
+          <p className="mb-2 text-[13px] font-bold text-sub">그 밖의 공정</p>
+          <Chips pool={pool(rest)} selected={S.works} onToggle={(k) => toggle("works", k)} />
+        </div>}
+      </div>
+      {tip("같은 공정은 한 번만 나와요. 예를 들어 철거를 욕실에서 골랐다면 주방 철거도 포함된 걸로 봐요.")}
+      {S.works.tile && <div className="mt-6">{blockLabel("타일은 어디에 하시나요?")}
+        <Chips pool={TILEW as [string, string, string?][]} selected={S.tileWhere} onToggle={(k) => toggle("tileWhere", k)} /></div>}
+    </>}
+  </div>)
 }
 
 export function Existing({ S, toggle, setField }: { S: State; toggle: Toggle; setField: SetField }) {
@@ -44,28 +76,18 @@ export function Existing({ S, toggle, setField }: { S: State; toggle: Toggle; se
     {ins && <Insight tone={ins.tone} html={ins.html} />}</div>)
 }
 
-export function Age({ S, setField }: { S: State; setField: SetField }) {
+export function Context({ S, setField }: { S: State; setField: SetField }) {
   const ins = insightFor("age", S)
-  return (<div><H1>집 연식과 이력</H1><Sub>겉이 멀쩡해도 배관·전선은 연식을 따라가요.</Sub>
+  return (<div><H1>마지막으로, 집과 맡기는 방식</H1><Sub>겉이 멀쩡해도 배관·전선은 연식을 따라가요.</Sub>
     <div className="mb-6">{blockLabel("준공 연식")}
       <Options value={S.age} onChange={(v) => setField("age", v)} opts={[["구축", "구축, 약 20년 이상"], ["준신축", "준신축, 10~20년"], ["신축", "신축, 10년 이내"], ["모름", "모르겠다"]]} />
       {tip("모르면 <b>호갱노노·네이버부동산</b>에서 준공연도를 확인할 수 있어요.")}</div>
     <div className="mb-6">{blockLabel("예전에 인테리어(리모델링)한 적 있나요?")}
       <Options value={S.prevReno} onChange={(v) => setField("prevReno", v)} opts={[["있음", "있다 (전 주인이 했든, 내가 했든)"], ["없음", "없다, 원래 상태"], ["모름", "모르겠다"]]} /></div>
+    <div className="mb-2">{blockLabel("어떻게 맡기시나요?")}
+      <Options value={S.order} onChange={(v) => setField("order", v)}
+        opts={[["턴키", "한 업체에 통째로 (턴키)", "한 곳이 전 공정을 맡음"], ["반셀프", "공정별로 따로 (반셀프)", "도배·타일·목공을 각각 다른 곳에"]]} /></div>
     {ins && <Insight tone={ins.tone} html={ins.html} />}</div>)
-}
-
-export function Works({ S, toggle }: { S: State; toggle: Toggle }) {
-  return (<div><H1>어떤 공정을 넣으셨나요?</H1><Sub>계획이나 견적에 있는 것을 모두 골라주세요.</Sub>
-    <Chips pool={WORKS as [string, string, string?][]} selected={S.works} onToggle={(k) => toggle("works", k)} />
-    {S.works.tile && <div className="mt-5">{blockLabel("타일은 어디에 하시나요?")}
-      <Chips pool={TILEW as [string, string, string?][]} selected={S.tileWhere} onToggle={(k) => toggle("tileWhere", k)} /></div>}</div>)
-}
-
-export function Order({ S, setField }: { S: State; setField: SetField }) {
-  return (<div><H1>어떻게 맡기시나요?</H1><Sub>공정을 어떻게 나누는지에 따라 책임 공백이 달라져요.</Sub>
-    <Options value={S.order} onChange={(v) => setField("order", v)}
-      opts={[["턴키", "한 업체에 통째로 (턴키)", "한 곳이 전 공정을 맡음"], ["반셀프", "공정별로 따로 (반셀프)", "도배·타일·목공을 각각 다른 곳에"]]} /></div>)
 }
 
 // ---- Review ----
@@ -98,17 +120,16 @@ function tagsFor(name: string, S: State) {
   return el
 }
 
-export function Review({ S, goTo, wiz }: { S: State; goTo: (name: string) => void; wiz: [string, string][] }) {
-  return (<div><H1>이대로 볼게요</H1><Sub>넣으신 내용이에요. 고칠 게 있으면 수정을 눌러주세요.</Sub>
-    <div className="flex flex-col gap-2.5">
-      {wiz.map(([key, label]) => (
-        <div key={key} className="rounded-[14px] border bg-card p-4 shadow-[0_1px_3px_rgba(25,31,40,0.06)]">
-          <div className="mb-2.5 flex items-center justify-between">
-            <span className="text-[12.5px] font-extrabold text-sub">{label}</span>
-            <button type="button" onClick={() => goTo(key)} className="text-[13px] font-extrabold text-[color:var(--primary)]">수정</button>
-          </div>
-          <div className="flex flex-wrap gap-1.5">{tagsFor(key, S)}</div>
+export function Summary({ S, goTo, wiz }: { S: State; goTo: (name: string) => void; wiz: [string, string][] }) {
+  const parts: [string, string][] = [["space", "scope"], ["works", "scope"], ["existing", "existing"], ["age", "context"], ["order", "context"]]
+  return (
+    <div className="mb-5 rounded-[14px] border bg-card p-4 shadow-[0_1px_3px_rgba(25,31,40,0.06)]">
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-[12.5px] font-extrabold text-sub">넣으신 내용</span>
+        <div className="flex gap-3">
+          {wiz.map(([k, l]) => <button key={k} type="button" onClick={() => goTo(k)} className="text-[12.5px] font-extrabold text-[color:var(--primary)]">{l} 수정</button>)}
         </div>
-      ))}
-    </div></div>)
+      </div>
+      <div className="flex flex-wrap gap-1.5">{parts.flatMap(([n]) => tagsFor(n, S)).map((t, i) => <span key={i}>{t}</span>)}</div>
+    </div>)
 }

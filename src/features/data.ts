@@ -13,6 +13,16 @@ export const WORKS: [string, string][] = [
   ["paint", "도장"], ["mold", "몰딩·문"],
 ]
 
+// 공간별로 주로 들어가는 공정 (미리 체크는 안 함 — 묶어서 보여주기만)
+export const SPACE_WORKS: Record<string, string[]> = {
+  bath: ["demo", "plumb", "water", "tile"],
+  kitchen: ["demo", "plumb", "elec", "tile"],
+  living: ["paper", "floor", "mold", "carpent", "light", "elec", "film", "paint"],
+  entry: ["tile", "mold", "film"],
+  veranda: ["tile", "water", "paint", "win"],
+  expand: ["demo", "win", "insul", "floor", "elec"],
+}
+
 export const TILEW: [string, string][] = [
   ["bath", "욕실 전체"], ["kit", "주방 벽"], ["ent", "현관·베란다"], ["flr", "거실·방 바닥"],
 ]
